@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Multidimensional Alien Portal</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #010107;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Instagram-friendly 3:4 stage */
+#scene {
+    position: relative;
+
+    width: min(100vw, calc(100vh * 0.75));
+    height: min(100vh, calc(100vw * 1.333333));
+
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 50% 45%,
+        #10133b 0%,
+        #05051a 35%,
+        #010108 75%,
+        #000 100%);
+
+    box-shadow:
+        inset 0 0 100px #000,
+        0 0 60px #000;
+}
+
+canvas {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+}
+
+/* Cinematic vignette */
+
+#vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+
+    background:
+        radial-gradient(
+            ellipse at center,
+            transparent 35%,
+            rgba(0,0,0,.15) 55%,
+            rgba(0,0,0,.75) 100%
+        );
+
+    z-index: 10;
+}
+
+/* Film grain */
+
+#grain {
+    position: absolute;
+    inset: -50%;
+    opacity: .07;
+    pointer-events: none;
+    z-index: 11;
+
+    background-image:
+        repeating-radial-gradient(
+            circle,
+            white 0px,
+            transparent 1px,
+            transparent 3px
+        );
+
+    animation: grainMove .2s infinite;
+}
+
+@keyframes grainMove {
+
+    0% {
+        transform: translate(0,0);
+    }
+
+    25% {
+        transform: translate(3%, -2%);
+    }
+
+    50% {
+        transform: translate(-2%, 3%);
+    }
+
+    75% {
+        transform: translate(2%, 2%);
+    }
+
+    100% {
+        transform: translate(0,0);
+    }
+}
+
+/* Title */
+
+#title {
+    position: absolute;
+    width: 100%;
+    top: 4%;
+    text-align: center;
+
+    color: white;
+    letter-spacing: 8px;
+
+    font-size: clamp(14px, 3vw, 27px);
+    font-weight: 300;
+
+    text-shadow:
+        0 0 10px #00ffff,
+        0 0 30px #8a2be2;
+
+    z-index: 20;
+}
+
+#subtitle {
+    position: absolute;
+    width: 100%;
+    top: 8%;
+
+    text-align: center;
+
+    color: #8ffcff;
+
+    letter-spacing: 4px;
+    font-size: clamp(7px, 1.4vw, 12px);
+
+    opacity: .75;
+
+    z-index: 20;
+}
+
+/* Bottom HUD */
+
+#hud {
+    position: absolute;
+
+    bottom: 4%;
+    left: 5%;
+    right: 5%;
+
+    display: flex;
+    justify-content: space-between;
+
+    color: #7ffaff;
+
+    font-size: clamp(7px, 1.3vw, 11px);
+    letter-spacing: 2px;
+
+    z-index: 20;
+
+    text-shadow: 0 0 8px cyan;
+}
+
+.hudBox {
+
+    border: 1px solid rgba(0,255,255,.35);
+
+    background: rgba(0,15,30,.35);
+
+    padding: 8px 10px;
+
+    backdrop-filter: blur(4px);
+
+    box-shadow:
+        inset 0 0 15px rgba(0,255,255,.08),
+        0 0 12px rgba(0,255,255,.08);
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="scene">
+
+    <canvas id="canvas"></canvas>
+
+    <div id="title">
+        DIMENSIONAL GATE
+    </div>
+
+    <div id="subtitle">
+        EXTRADIMENSIONAL TRANSIT DETECTED
+    </div>
+
+    <div id="hud">
+
+        <div class="hudBox">
+            GATE ENERGY:
+            <span id="energy">97.4%</span>
+        </div>
+
+        <div class="hudBox">
+            ENTITY:
+            <span id="entity">SCANNING</span>
+        </div>
+
+    </div>
+
+    <div id="vignette"></div>
+    <div id="grain"></div>
+
+</div>
+
+<script>
+
+/* =========================================================
+   CANVAS
+========================================================= */
+
+const canvas =
+    document.getElementById("canvas");
+
+const ctx =
+    canvas.getContext("2d");
+
+const scene =
+    document.getElementById("scene");
+
+const energyDisplay =
+    document.getElementById("energy");
+
+const entityDisplay =
+    document.getElementById("entity");
+
+
+let W;
+let H;
+let CX;
+let CY;
+
+let portalRadius;
+
+
+/* =========================================================
+   RESIZE
+========================================================= */
+
+function resize() {
+
+    const rect =
+        scene.getBoundingClientRect();
+
+    const dpr =
+        Math.min(window.devicePixelRatio || 1, 2);
+
+    canvas.width =
+        rect.width * dpr;
+
+    canvas.height =
+        rect.height * dpr;
+
+    canvas.style.width =
+        rect.width + "px";
+
+    canvas.style.height =
+        rect.height + "px";
+
+    ctx.setTransform(
+        dpr, 0,
+        0, dpr,
+        0, 0
+    );
+
+    W = rect.width;
+    H = rect.height;
+
+    CX = W / 2;
+
+    /* Portal sits slightly above center */
+
+    CY = H * .45;
+
+    portalRadius =
+        Math.min(W,H) * .27;
+}
+
+window.addEventListener(
+    "resize",
+    resize
+);
+
+resize();
+
+
+/* =========================================================
+   STARS
+========================================================= */
+
+const stars = [];
+
+for(let i = 0; i < 220; i++) {
+
+    stars.push({
+
+        x: Math.random(),
+        y: Math.random(),
+
+        size:
+            Math.random() * 1.8 + .2,
+
+        alpha:
+            Math.random(),
+
+        speed:
+            Math.random() * .003 + .001
+
+    });
+}
+
+
+function drawStars(time) {
+
+    for(const s of stars) {
+
+        const pulse =
+            .35 +
+            Math.sin(
+                time * s.speed +
+                s.x * 20
+            ) * .3;
+
+        ctx.beginPath();
+
+        ctx.arc(
+            s.x * W,
+            s.y * H,
+            s.size,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            `rgba(180,220,255,
+            ${Math.max(.1,pulse)})`;
+
+        ctx.fill();
+    }
+}
+
+
+/* =========================================================
+   ENERGY PARTICLES
+========================================================= */
+
+const particles = [];
+
+for(let i = 0; i < 900; i++) {
+
+    particles.push(
+        createParticle()
+    );
+}
+
+
+function createParticle() {
+
+    return {
+
+        angle:
+            Math.random() *
+            Math.PI * 2,
+
+        radius:
+            Math.random(),
+
+        speed:
+            .002 +
+            Math.random() *
+            .008,
+
+        offset:
+            Math.random() *
+            Math.PI * 2,
+
+        size:
+            Math.random() *
+            2.5 + .3,
+
+        hue:
+            170 +
+            Math.random() *
+            150,
+
+        depth:
+            Math.random()
+
+    };
+}
+
+
+function drawParticles(time) {
+
+    ctx.save();
+
+    ctx.globalCompositeOperation =
+        "lighter";
+
+    for(const p of particles) {
+
+        p.angle +=
+            p.speed;
+
+        /*
+           Particle movement combines:
+           circular motion,
+           sinusoidal distortion,
+           and depth scaling.
+        */
+
+        const distortion =
+            Math.sin(
+                p.angle * 5 +
+                time * .002 +
+                p.offset
+            ) * .16;
+
+        const r =
+            portalRadius *
+            (
+                .25 +
+                p.radius * .9 +
+                distortion
+            );
+
+        const ellipse =
+            .50 +
+            p.depth * .35;
+
+        const x =
+            CX +
+            Math.cos(p.angle) *
+            r;
+
+        const y =
+            CY +
+            Math.sin(p.angle) *
+            r *
+            ellipse;
+
+        const alpha =
+            .25 +
+            p.depth * .7;
+
+        ctx.beginPath();
+
+        ctx.arc(
+            x,
+            y,
+            p.size *
+            (.5 + p.depth),
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle =
+            `hsla(
+            ${p.hue},
+            100%,
+            65%,
+            ${alpha}
+            )`;
+
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+
+/* =========================================================
+   PORTAL CORE
+========================================================= */
+
+function drawPortalCore(time) {
+
+    const pulse =
+        1 +
+        Math.sin(time * .003)
+        * .035;
+
+    const R =
+        portalRadius * pulse;
+
+
+    /* Outer glow */
+
+    let glow =
+        ctx.createRadialGradient(
+            CX,CY,
+            R * .4,
+            CX,CY,
+            R * 1.65
+        );
+
+    glow.addColorStop(
+        0,
+        "rgba(60,0,120,.12)"
+    );
+
+    glow.addColorStop(
+        .35,
+        "rgba(0,255,255,.13)"
+    );
+
+    glow.addColorStop(
+        .65,
+        "rgba(150,0,255,.12)"
+    );
+
+    glow.addColorStop(
+        1,
+        "rgba(0,0,0,0)"
+    );
+
+    ctx.beginPath();
+
+    ctx.arc(
+        CX,CY,
+        R * 1.7,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle =
+        glow;
+
+    ctx.fill();
+
+
+    /* Event horizon */
+
+    let core =
+        ctx.createRadialGradient(
+            CX,
+            CY,
+            0,
+            CX,
+            CY,
+            R
+        );
+
+    core.addColorStop(
+        0,
+        "rgba(0,0,0,1)"
+    );
+
+    core.addColorStop(
+        .28,
+        "rgba(2,0,20,1)"
+    );
+
+    core.addColorStop(
+        .55,
+        "rgba(15,0,45,.95)"
+    );
+
+    core.addColorStop(
+        .74,
+        "rgba(30,0,80,.8)"
+    );
+
+    core.addColorStop(
+        .88,
+        "rgba(0,180,255,.45)"
+    );
+
+    core.addColorStop(
+        1,
+        "rgba(180,50,255,.05)"
+    );
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        CX,
+        CY,
+        R,
+        R * .72,
+        0,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle =
+        core;
+
+    ctx.fill();
+}
+
+
+/* =========================================================
+   PORTAL RINGS
+========================================================= */
+
+function drawPortalRings(time) {
+
+    ctx.save();
+
+    ctx.translate(
+        CX,
+        CY
+    );
+
+    ctx.globalCompositeOperation =
+        "lighter";
+
+
+    for(let i = 0; i < 14; i++) {
+
+        const layer =
+            i / 14;
+
+        const radius =
+            portalRadius *
+            (.65 + layer * .65);
+
+        const rotation =
+            time *
+            (.00015 +
+             i * .000025) *
+            (i % 2 ? 1 : -1);
+
+        ctx.save();
+
+        ctx.rotate(rotation);
+
+        ctx.beginPath();
+
+        /*
+          Broken arcs create a moving
+          dimensional-energy effect.
+        */
+
+        const segments = 20;
+
+        for(let j = 0;
+            j < segments;
+            j++) {
+
+            const start =
+                j / segments *
+                Math.PI * 2;
+
+            const wave =
+                Math.sin(
+                    time * .002 +
+                    i +
+                    j
+                ) * .08;
+
+            ctx.ellipse(
+                0,
+                0,
+                radius *
+                (1 + wave),
+                radius *
+                (.55 +
+                 Math.sin(
+                     time*.001+i
+                 )*.04),
+                0,
+                start,
+                start +
+                Math.PI / segments
+            );
+        }
+
+        const hue =
+            (180 +
+             i * 15 +
+             time * .02)
+            % 360;
+
+        ctx.strokeStyle =
+            `hsla(
+            ${hue},
+            100%,
+            60%,
+            ${.15 + layer*.2}
+            )`;
+
+        ctx.lineWidth =
+            1 +
+            layer * 2;
+
+        ctx.shadowBlur =
+            10 + layer * 15;
+
+        ctx.shadowColor =
+            `hsl(${hue},100%,60%)`;
+
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    ctx.restore();
+}
+
+
+/* =========================================================
+   SPIRAL ENERGY
+========================================================= */
+
+function drawSpirals(time) {
+
+    ctx.save();
+
+    ctx.globalCompositeOperation =
+        "lighter";
+
+    for(let arm = 0;
+        arm < 8;
+        arm++) {
+
+        ctx.beginPath();
+
+        for(let i = 0;
+            i < 140;
+            i++) {
+
+            const t =
+                i / 140;
+
+            const angle =
+                t * Math.PI * 4 +
+                arm *
+                Math.PI / 4 +
+                time * .0015;
+
+            const r =
+                t *
+                portalRadius *
+                1.25;
+
+            const x =
+                CX +
+                Math.cos(angle) *
+                r;
+
+            const y =
+                CY +
+                Math.sin(angle) *
+                r * .62;
+
+            if(i === 0)
+                ctx.moveTo(x,y);
+            else
+                ctx.lineTo(x,y);
+        }
+
+        const hue =
+            180 +
+            arm * 22;
+
+        ctx.strokeStyle =
+            `hsla(
+            ${hue},
+            100%,
+            65%,
+            .15
+            )`;
+
+        ctx.lineWidth =
+            1.5;
+
+        ctx.shadowBlur =
+            12;
+
+        ctx.shadowColor =
+            `hsl(
+            ${hue},
+            100%,
+            60%
+            )`;
+
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+
+/* =========================================================
+   LIGHTNING
+========================================================= */
+
+function lightningBolt(
+    angle,
+    time
+) {
+
+    const startR =
+        portalRadius * .7;
+
+    const endR =
+        portalRadius * 1.3;
+
+    const segments =
+        9;
+
+    ctx.save();
+
+    ctx.globalCompositeOperation =
+        "lighter";
+
+    ctx.beginPath();
+
+    for(let i = 0;
+        i <= segments;
+        i++) {
+
+        const t =
+            i / segments;
+
+        const r =
+            startR +
+            (endR-startR) * t;
+
+        const jitter =
+            (Math.random()-.5)
+            * portalRadius * .08;
+
+        const x =
+            CX +
+            Math.cos(angle) *
+            r +
+            jitter;
+
+        const y =
+            CY +
+            Math.sin(angle) *
+            r * .65 +
+            jitter;
+
+        if(i===0)
+            ctx.moveTo(x,y);
+        else
+            ctx.lineTo(x,y);
+    }
+
+    ctx.strokeStyle =
+        "rgba(160,245,255,.7)";
+
+    ctx.lineWidth =
+        1.2;
+
+    ctx.shadowBlur =
+        20;
+
+    ctx.shadowColor =
+        "#00ffff";
+
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+
+function drawLightning(time) {
+
+    if(Math.random() < .08) {
+
+        const count =
+            1 +
+            Math.floor(
+                Math.random()*3
+            );
+
+        for(let i=0;i<count;i++) {
+
+            lightningBolt(
+                Math.random() *
+                Math.PI * 2,
+                time
+            );
+        }
+    }
+}
+
+
+/* =========================================================
+   ALIEN
+========================================================= */
+
+const aliens = [];
+
+let lastAlien =
+    performance.now();
+
+
+function spawnAlien() {
+
+    aliens.push({
+
+        life: 0,
+
+        duration:
+            6500 +
+            Math.random()*3000,
+
+        direction:
+            Math.random() >
+            .45 ? 1 : -1,
+
+        offsetX:
+            (Math.random()-.5)
+            * portalRadius * .35,
+
+        phase:
+            Math.random() *
+            Math.PI * 2,
+
+        hue:
+            Math.random() >
+            .5 ? 175 : 115
+
+    });
+
+}
+
+
+function drawAlienShape(
+    x,
+    y,
+    scale,
+    alpha,
+    hue
+) {
+
+    ctx.save();
+
+    ctx.translate(x,y);
+
+    ctx.scale(
+        scale,
+        scale
+    );
+
+    ctx.globalAlpha =
+        alpha;
+
+
+    /*
+       Alien atmospheric glow
+    */
+
+    const aura =
+        ctx.createRadialGradient(
+            0,0,5,
+            0,0,85
+        );
+
+    aura.addColorStop(
+        0,
+        `hsla(
+        ${hue},
+        100%,
+        65%,
+        .18)`
+    );
+
+    aura.addColorStop(
+        1,
+        "rgba(0,0,0,0)"
+    );
+
+    ctx.fillStyle =
+        aura;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        0,0,85,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+
+    /*
+       Body
+    */
+
+    ctx.shadowBlur =
+        18;
+
+    ctx.shadowColor =
+        `hsl(
+        ${hue},
+        100%,
+        55%
+        )`;
+
+    ctx.fillStyle =
+        `hsla(
+        ${hue},
+        35%,
+        22%,
+        .95
+        )`;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        -14,25
+    );
+
+    ctx.quadraticCurveTo(
+        -23,70,
+        -14,125
+    );
+
+    ctx.lineTo(
+        -7,175
+    );
+
+    ctx.lineTo(
+        1,175
+    );
+
+    ctx.lineTo(
+        5,115
+    );
+
+    ctx.lineTo(
+        11,175
+    );
+
+    ctx.lineTo(
+        19,175
+    );
+
+    ctx.lineTo(
+        15,70
+    );
+
+    ctx.quadraticCurveTo(
+        22,40,
+        14,25
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    /*
+       Arms
+    */
+
+    ctx.strokeStyle =
+        `hsla(
+        ${hue},
+        40%,
+        28%,
+        1
+        )`;
+
+    ctx.lineWidth =
+        7;
+
+    ctx.lineCap =
+        "round";
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        -12,50
+    );
+
+    ctx.lineTo(
+        -32,105
+    );
+
+    ctx.lineTo(
+        -38,145
+    );
+
+    ctx.moveTo(
+        12,50
+    );
+
+    ctx.lineTo(
+        32,105
+    );
+
+    ctx.lineTo(
+        38,145
+    );
+
+    ctx.stroke();
+
+
+    /*
+       Head
+    */
+
+    ctx.fillStyle =
+        `hsl(
+        ${hue},
+        30%,
+        28%
+        )`;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        0,-55
+    );
+
+    ctx.bezierCurveTo(
+        -35,-52,
+        -43,-10,
+        -21,22
+    );
+
+    ctx.bezierCurveTo(
+        -12,38,
+        12,38,
+        21,22
+    );
+
+    ctx.bezierCurveTo(
+        43,-10,
+        35,-52,
+        0,-55
+    );
+
+    ctx.fill();
+
+
+    /*
+       Eyes
+    */
+
+    ctx.shadowBlur =
+        20;
+
+    ctx.shadowColor =
+        "#aaffff";
+
+    ctx.fillStyle =
+        "#cfffff";
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        -13,
+        -8,
+        11,
+        4.5,
+        -.3,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        13,
+        -8,
+        11,
+        4.5,
+        .3,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+
+    /*
+       Eye cores
+    */
+
+    ctx.fillStyle =
+        "#ffffff";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        -13,-8,
+        2.5,
+        0,
+        Math.PI*2
+    );
+
+    ctx.arc(
+        13,-8,
+        2.5,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+    ctx.restore();
+}
+
+
+/* =========================================================
+   ALIEN MOVEMENT
+========================================================= */
+
+function updateAliens(
+    delta,
+    time
+) {
+
+    for(let i =
+        aliens.length-1;
+        i>=0;
+        i--) {
+
+        const a =
+            aliens[i];
+
+        a.life += delta;
+
+        let t =
+            a.life /
+            a.duration;
+
+        if(t >= 1) {
+
+            aliens.splice(
+                i,1
+            );
+
+            continue;
+        }
+
+
+        /*
+           Alien emerges,
+           approaches viewer,
+           then returns.
+        */
+
+        let depth;
+
+        if(a.direction === 1) {
+
+            depth =
+                Math.sin(
+                    t *
+                    Math.PI
+                );
+
+        } else {
+
+            depth =
+                Math.sin(
+                    t *
+                    Math.PI
+                ) * .8;
+        }
+
+
+        const scale =
+            .08 +
+            depth * 1.05;
+
+        const y =
+            CY +
+            depth *
+            H * .32;
+
+        const x =
+            CX +
+            a.offsetX +
+            Math.sin(
+                t * 8 +
+                a.phase
+            ) * 8;
+
+        let alpha =
+            Math.min(
+                1,
+                depth * 2.8
+            );
+
+        drawAlienShape(
+            x,
+            y,
+            scale,
+            alpha,
+            a.hue
+        );
+
+
+        if(depth > .4) {
+
+            entityDisplay.textContent =
+                "ENTITY DETECTED";
+
+        }
+
+    }
+
+    if(aliens.length === 0) {
+
+        entityDisplay.textContent =
+            "SCANNING";
+    }
+
+
+    /*
+       Spawn new traveler
+    */
+
+    if(
+        time -
+        lastAlien >
+        5500
+    ) {
+
+        spawnAlien();
+
+        lastAlien =
+            time;
+    }
+
+}
+
+
+/* =========================================================
+   FLOOR REFLECTION
+========================================================= */
+
+function drawReflection(time) {
+
+    const gradient =
+        ctx.createLinearGradient(
+            0,
+            CY,
+            0,
+            H
+        );
+
+    gradient.addColorStop(
+        0,
+        "rgba(0,255,255,.07)"
+    );
+
+    gradient.addColorStop(
+        1,
+        "rgba(0,0,0,0)"
+    );
+
+    ctx.fillStyle =
+        gradient;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        CX-portalRadius,
+        CY
+    );
+
+    ctx.lineTo(
+        CX+portalRadius,
+        CY
+    );
+
+    ctx.lineTo(
+        W,
+        H
+    );
+
+    ctx.lineTo(
+        0,
+        H
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    /* Perspective lines */
+
+    ctx.strokeStyle =
+        "rgba(0,200,255,.06)";
+
+    ctx.lineWidth =
+        1;
+
+    for(let i=0;i<12;i++) {
+
+        const x =
+            i / 11 * W;
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            CX,
+            CY
+        );
+
+        ctx.lineTo(
+            x,
+            H
+        );
+
+        ctx.stroke();
+    }
+}
+
+
+/* =========================================================
+   ENERGY HUD
+========================================================= */
+
+function updateHUD(time) {
+
+    const energy =
+        94 +
+        Math.sin(
+            time * .002
+        ) * 3 +
+        Math.random() * .8;
+
+    energyDisplay.textContent =
+        energy.toFixed(1) +
+        "%";
+}
+
+
+/* =========================================================
+   MAIN ANIMATION LOOP
+========================================================= */
+
+let previousTime =
+    performance.now();
+
+
+function animate(time) {
+
+    const delta =
+        time -
+        previousTime;
+
+    previousTime =
+        time;
+
+
+    /*
+       Clear with slight transparency.
+       Produces subtle motion trails.
+    */
+
+    ctx.fillStyle =
+        "rgba(0,0,8,.36)";
+
+    ctx.fillRect(
+        0,0,W,H
+    );
+
+
+    /*
+       Rendering order controls depth.
+    */
+
+    drawStars(time);
+
+    drawReflection(time);
+
+    drawPortalCore(time);
+
+    drawSpirals(time);
+
+    drawPortalRings(time);
+
+    drawParticles(time);
+
+    drawLightning(time);
+
+    updateAliens(
+        delta,
+        time
+    );
+
+    updateHUD(time);
+
+
+    requestAnimationFrame(
+        animate
+    );
+}
+
+
+/* Initial alien */
+
+spawnAlien();
+
+
+requestAnimationFrame(
+    animate
+);
+
+</script>
+
+</body>
+</html>
